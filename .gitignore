@@ -1,3 +1,4 @@
 # created by virtualenv automatically
 .venv/*
 .idea/*
+analyze_sponsors/run_outputs/*
