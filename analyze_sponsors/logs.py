@@ -28,3 +28,10 @@ def setup_logging(log_dir, log_level=logging.INFO):
     console_handler.setLevel(log_level)
     console_handler.setFormatter(logging.Formatter(log_format))
     logger.addHandler(console_handler)
+
+
+def flush_logger():
+    """Flush the logger to ensure all messages are written."""
+    for handler in logging.getLogger().handlers:
+        handler.flush()
+    logging.info("Logger flushed.")
