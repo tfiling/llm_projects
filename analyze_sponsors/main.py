@@ -11,13 +11,19 @@ OUTPUTS_DIR = pathlib.Path(".") / "run_outputs"
 EMPLOYERS_CSV = pathlib.Path(".") / "data" / "approved_employers.csv"
 LOGS_PATH = OUTPUTS_DIR / "logs"
 CURRENT_RUN_DIR = OUTPUTS_DIR / "1"
+temp_blacklist = [
+    "10BE5 LTD.",
+]
 
 
 async def process_company(name: str):
     error = None
     try:
         logs.trace_id_var.set(name)
-        logging.info("[%s] processing company %s", logs.trace_id_var.get(), name)
+        if name in temp_blacklist:
+            logging.info("[%s] skipping black listed company", logs.trace_id_var.get())
+            return name, None
+        logging.info("[%s] processing company", logs.trace_id_var.get())
         website_url = await careers_page.find_website(name)
         positions = await open_positions.analyze(website_url)
         csv_utils.persist_open_positions(name, positions)

@@ -23,7 +23,7 @@ async def find_website(name: str) -> str:
         website_url = await method(name)
         if website_url:
             return website_url
-    logging.warning("[%s] could not find website for company %s", logs.trace_id_var.get(), name)
+    logging.warning("[%s] could not find website for company", logs.trace_id_var.get())
     raise RuntimeError(f"could not find website for company {name}")
 
 
@@ -34,21 +34,24 @@ async def concrete_google_search(name: str) -> typing.Optional[str]:
 
 
 def sync_concrete_google_search(name: str) -> typing.Optional[str]:
+    # Might be applied in a separate context due since it's not async
+    logs.trace_id_var.set(name)
     website_url = _query_for_website(name)
     if not website_url:
-        logging.warning("[%s] could not find careers page", name)
+        logging.warning("[%s] could not find careers page", logs.trace_id_var.get())
         raise RuntimeError("could not find careers page")
     try:
         logging.debug("[%s] found careers page %s", logs.trace_id_var.get(), website_url)
         similarity = _domain_company_similarity(website_url, name)
         if similarity < 0.6:
             logging.info("[%s] website %s is not similar enough to company name(%.2f%% similar)",
-                         name, website_url, similarity)
+                         logs.trace_id_var.get(), website_url, similarity)
             return None
     except Exception as e:
-        logging.error("[%s] could not calculate website similarity to company name: %s", name, e)
+        logging.error("[%s] could not calculate website similarity to company name: %s",
+                      logs.trace_id_var.get(), e)
         return None
-    logging.info("[%s] found careers page(%.2f%% similar): %s", name, similarity, website_url)
+    logging.info("[%s] found careers page(%.2f%% similar): %s", logs.trace_id_var.get(), similarity, website_url)
     return website_url
 
 
