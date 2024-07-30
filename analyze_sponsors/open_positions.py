@@ -11,7 +11,7 @@ import anthropic
 from analyze_sponsors import logs
 from analyze_sponsors import prompts
 
-cache = Cache(str(pathlib.Path(".") / "run_outputs" / "1"))
+cache = Cache(str(pathlib.Path(".") / "run_outputs" / "1" / "claude_cache"))
 
 
 async def analyze(careers_page_url: str):

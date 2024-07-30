@@ -12,7 +12,7 @@ def persist_open_positions(company_name, open_positions: typing.List[dict], over
     logging.debug("[%s] persisting found jobs: %s", company_name, open_positions)
     
     fieldnames = ["title", "type", "location"]
-    dest_file = pathlib.Path(".") / "run_outputs" / "1" / f"{company_name}.csv"
+    dest_file = pathlib.Path(".") / "run_outputs" / "1" / "positions" / f"{company_name}.csv"
     if dest_file.exists():
         if not override_last_res:
             logging.info("[%s] open positions were already extracted. exiting", company_name)
