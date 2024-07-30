@@ -13,6 +13,14 @@ LOGS_PATH = OUTPUTS_DIR / "logs"
 CURRENT_RUN_DIR = OUTPUTS_DIR / "1"
 temp_blacklist = [
     "10BE5 LTD.",
+    "29FORWARD Ltd",
+    "Adam Ellis Ltd",
+    "Adludio Limited",
+    "Admaxim Limited",
+    "ADSWIZZ LIMITED",
+    "Advancy Limited",
+    "Advantage Solicitors Ltd T/A Advantage Solicitors",
+    "Aeguana Ltd",
 ]
 
 
@@ -32,20 +40,26 @@ async def process_company(name: str):
     return name, error
 
 
+async def process_batch(raw_employers):
+    company_names = {entry["Organisation Name"] for entry in raw_employers}
+    res = await asyncio.gather(*(process_company(company_name) for company_name in company_names),
+                               return_exceptions=True)
+    for company_name, err in res:
+        if err:
+            logging.error("[%s] analysis failed with error: %s", company_name, err)
+
+
 async def main():
     logs.setup_logging(LOGS_PATH, logging.DEBUG)
     raw_employers = csv_utils.read_csv_to_dict(EMPLOYERS_CSV)
     # TODO - apply for all companies
-    raw_employers = raw_employers[:50]
-    # raw_employers = [raw_employers[40]]
-    company_names = [entry["Organisation Name"] for entry in raw_employers]
-    res = await asyncio.gather(*(process_company(company_name) for company_name in company_names), return_exceptions=True)
-    for company_name, err in res:
-        if err:
-            logging.error("[%s] analysis failed with error: %s", company_name, err)
+    batch_size = 10
+    batches = [raw_employers[i:i + batch_size] for i in range(0, len(raw_employers), batch_size)]
+    batches = batches[:10]
+    for b in batches:
+        await process_batch(b)
     logs.flush_logger()
 
 
 if __name__ == '__main__':
     asyncio.run(main())
-
