@@ -1,6 +1,4 @@
-ANALYZE_OPEN_POSITIONS_PAGE = """Certainly. I'll adapt the system prompt to be specific for careers pages, based on the example you provided earlier. Here's the modified prompt:
-
-Your task is to analyze the provided careers page content and extract key job information into a structured JSON format. Follow these guidelines:
+ANALYZE_OPEN_POSITIONS_PAGE = """Your task is to analyze the provided careers page content and extract key job information into a structured JSON format. Follow these guidelines:
 
 1. Identify all job positions mentioned in the text
 
