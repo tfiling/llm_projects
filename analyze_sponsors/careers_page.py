@@ -6,10 +6,13 @@ import typing
 import re
 from urllib import parse
 
+import bs4
+import requests
 from diskcache import Cache
 import oxylabs
 
 import logs
+from analyze_sponsors import keywords
 
 cache = Cache(str(pathlib.Path(".") / "run_outputs" / "1" / "search_cache"))
 
@@ -23,7 +26,7 @@ async def find_website(name: str) -> str:
         if website_url:
             return website_url
     logging.warning("[%s] could not find website for company", logs.trace_id_var.get())
-    raise RuntimeError(f"could not find website for company {name}")
+    raise AssertionError(f"could not find website for company {name}")
 
 
 async def concrete_google_search(name: str) -> typing.Optional[str]:
@@ -42,25 +45,26 @@ def sync_concrete_google_search(name: str) -> typing.Optional[str]:
     try:
         logging.debug("[%s] found careers page %s", logs.trace_id_var.get(), website_url)
         similarity = _domain_company_similarity(website_url, name)
-        if similarity < 0.6:
-            logging.info("[%s] website %s is not similar enough to company name(%.2f%% similar)",
-                         logs.trace_id_var.get(), website_url, similarity)
-            return None
+        if similarity > 0.6:
+            logging.info("[%s] found careers page(%.2f%% similar): %s", logs.trace_id_var.get(),
+                         similarity, website_url)
+            return website_url
+        if _contains_relevant_keywords(website_url):
+            logging.info("[%s] found careers page %s based on relevant keywords",
+                         logs.trace_id_var.get(), website_url)
+            return website_url
     except Exception as e:
         logging.error("[%s] could not calculate website similarity to company name: %s",
                       logs.trace_id_var.get(), e)
-        return None
-    logging.info("[%s] found careers page(%.2f%% similar): %s", logs.trace_id_var.get(), similarity, website_url)
-    return website_url
+        raise e
+    logging.info("[%s] website %s is not similar enough to company name",
+                 logs.trace_id_var.get(), website_url)
+    return None
 
 
 @cache.memoize()
 def _query_for_website(name: str) -> typing.Optional[str]:
     logging.debug("[%s] cache miss for google search", logs.trace_id_var.get())
-    # sleep_time = random.uniform(5, 10)
-    # sleep_time = 0.2
-    # logging.debug("[%s] sleeping %.2f%% seconds", logs.trace_id_var.get(), sleep_time)
-    # time.sleep(sleep_time)
     try:
         client = oxylabs.RealtimeClient("tfiling_AkUi1", "MxQSK8bQyjyM6h_")
         response = client.serp.google.scrape_search(f"{name} official website careers", limit=1,
@@ -70,8 +74,30 @@ def _query_for_website(name: str) -> typing.Optional[str]:
         logging.debug("[%s] search results: %s", logs.trace_id_var.get(), response.results)
         return _extract_first_result(response)
     except Exception as e:
-        logging.warning("[%s] failed searching careers page: %s", name, e)
+        logging.warning("[%s] failed searching careers page: %s", logs.trace_id_var.get(), e)
         raise e
+
+
+def _contains_relevant_keywords(website_url) -> bool:
+    resp = requests.get(website_url)
+    resp.raise_for_status()
+    html_content = resp.text.lower()
+    soup = bs4.BeautifulSoup(html_content, 'html.parser')
+    tags_to_remove = [
+        "script", "style", "meta", "link", "header", "footer", "nav",
+        "aside", "noscript", "iframe", "svg", "form", "input", "button"
+    ]
+    for tag in tags_to_remove:
+        for element in soup.find_all(tag):
+            element.decompose()
+    for comment in soup.find_all(text=lambda text: isinstance(text, bs4.Comment)):
+        comment.extract()
+    text = soup.get_text()
+    contents = re.sub(r'\n\s*\n', '\n', text)
+    matched_words = [word for word in keywords.RELEVANT_POSITIONS_KEYWORDS if word in contents]
+    logging.debug("[%s] careers page contents matched %d keywords: %s",
+                  logs.trace_id_var.get(), len(matched_words), matched_words)
+    return len(matched_words) > 0
 
 
 def _extract_first_result(response) -> typing.Optional[str]:
@@ -88,7 +114,8 @@ def _extract_first_result(response) -> typing.Optional[str]:
         logging.warning("[%s] no search results", logs.trace_id_var.get())
         return None
     if "url" not in result.content["results"]["organic"][0]:
-        logging.error("[%s] missing url from result: %s", logs.trace_id_var.get(), result.content["results"]["organic"][0])
+        logging.error("[%s] missing url from result: %s", logs.trace_id_var.get(),
+                      result.content["results"]["organic"][0])
         return None
     return result.content["results"]["organic"][0]["url"]
 
