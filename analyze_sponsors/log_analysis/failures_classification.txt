@@ -1,0 +1,20 @@
+DEBUG | _base_client.py:448
+NOT A FAILURE - a prompt that contains "ERROR"
+
+ERROR | careers_page.py:110
+google search resulted an invalid response:
+{'parse_status_code': 12002}
+
+ERROR | careers_page.py:57
+an exception while calculating similarity - usually raised when running HTTP get to careers page.
+Common reasons to failures("grep match"):
+- SSLError("SSLError")
+- DNS resolving error("Failed to resolve")
+- misc non 200 HTTP responses
+
+ERROR | internal.py:106
+3rd party failure
+
+ERROR | main.py:49
+reason why could not extract open positions
+Claude "invalid_request_error" -
