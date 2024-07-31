@@ -17,6 +17,8 @@ cache = Cache(str(pathlib.Path(".") / "run_outputs" / "1" / "claude_cache"))
 async def analyze(careers_page_url: str):
     logging.debug("[%s] analyzing open positions", logs.trace_id_var.get())
     page_contents = await _get_stripped_page_content(careers_page_url)
+    if not page_contents:
+        raise RuntimeError(f"empty careers page contents for {careers_page_url}")
     return _extract_open_positions(page_contents)
 
 
