@@ -24,12 +24,20 @@ temp_blacklist = [
 ]
 
 
+def _is_already_processed(company_name: str):
+    expected_csv_file = CURRENT_RUN_DIR / "positions" / f"{company_name}.csv"
+    return expected_csv_file.exists()
+
+
 async def process_company(name: str):
     error = None
     try:
         logs.trace_id_var.set(name)
         if name in temp_blacklist:
             logging.info("[%s] skipping black listed company", logs.trace_id_var.get())
+            return name, None
+        if _is_already_processed(name):
+            logging.info("[%s] already processed", logs.trace_id_var.get())
             return name, None
         logging.info("[%s] processing company", logs.trace_id_var.get())
         website_url = await careers_page.find_website(name)
@@ -55,7 +63,7 @@ async def main():
     # TODO - apply for all companies
     batch_size = 10
     batches = [raw_employers[i:i + batch_size] for i in range(0, len(raw_employers), batch_size)]
-    batches = batches[:10]
+    # batches = batches[:1000]
     for b in batches:
         await process_batch(b)
     logs.flush_logger()
