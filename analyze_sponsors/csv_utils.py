@@ -1,7 +1,9 @@
 import logging
 import pathlib
+import re
 import typing
 import csv
+import urllib.parse
 from datetime import datetime
 
 
@@ -12,7 +14,7 @@ def persist_open_positions(company_name, open_positions: typing.List[dict], over
     logging.debug("[%s] persisting found jobs: %s", company_name, open_positions)
     
     fieldnames = ["title", "type", "location"]
-    dest_file = pathlib.Path(".") / "run_outputs" / "1" / "positions" / f"{company_name}.csv"
+    dest_file = calculate_results_file_path(company_name)
     if dest_file.exists():
         if not override_last_res:
             logging.info("[%s] open positions were already extracted. exiting", company_name)
@@ -47,3 +49,14 @@ def read_csv_to_dict(path: pathlib.Path) -> list:
     return result
 
 
+def calculate_results_file_path(company_name: str) -> pathlib.Path:
+    return pathlib.Path(".") / "run_outputs" / "1" / "positions" / f"{escape_filename(company_name)}.csv"
+
+
+def escape_filename(filename: str):
+    quoted = urllib.parse.quote(filename)
+    escaped = re.sub(r'[/\\?%*:|"<>]', '_', quoted)
+    escaped = re.sub(r'^[\. ]', '_', escaped)
+    escaped = escaped.rstrip('. ')
+
+    return escaped

@@ -25,8 +25,7 @@ temp_blacklist = [
 
 
 def _is_already_processed(company_name: str):
-    expected_csv_file = CURRENT_RUN_DIR / "positions" / f"{company_name}.csv"
-    return expected_csv_file.exists()
+    return csv_utils.calculate_results_file_path(company_name).exists()
 
 
 async def process_company(name: str):
@@ -66,6 +65,8 @@ async def main():
     # batches = batches[:1000]
     for b in batches:
         await process_batch(b)
+        logging.debug("-----------------------------------------------------------------------------------------------")
+        logging.debug("-----------------------------------------------------------------------------------------------")
     logs.flush_logger()
 
 
