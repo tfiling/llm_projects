@@ -24,8 +24,6 @@ async def analyze(careers_page_url: str):
 
 def _extract_open_positions(page_contents: str) -> list:
     message = _send_api_request(page_contents)
-    if message.stop_reason != "end_turn":
-        logging.warning("[%s] unexpected stop reason: %s", logs.trace_id_var.get(), message.stop_reason)
     if not message.content:
         logging.error("[%s] open positions extraction prompt resulted an empty reply", logs.trace_id_var.get())
         return []
