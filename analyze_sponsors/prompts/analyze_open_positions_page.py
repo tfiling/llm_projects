@@ -1,4 +1,4 @@
-ANALYZE_OPEN_POSITIONS_PAGE = """Your task is to analyze the provided careers page content and extract key job information into a structured JSON format. Follow these guidelines:
+PROMPT = """Your task is to analyze the provided careers page content and extract key job information into a structured JSON format. Follow these guidelines:
 
 1. Identify all job positions mentioned in the text
 

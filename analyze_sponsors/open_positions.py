@@ -8,8 +8,8 @@ import bs4
 from diskcache import Cache
 import anthropic
 
-from analyze_sponsors import logs
-from analyze_sponsors import prompts
+from analyze_sponsors.logs import logs
+from analyze_sponsors.prompts import analyze_open_positions_page
 
 cache = Cache(str(pathlib.Path(".") / "run_outputs" / "1" / "claude_cache"))
 
@@ -44,7 +44,7 @@ def _send_api_request(page_contents: str) -> anthropic.types.Message:
     )
     message = client.messages.create(
         max_tokens=1024,
-        system=prompts.ANALYZE_OPEN_POSITIONS_PAGE,
+        system=analyze_open_positions_page.PROMPT,
         messages=[
             {
                 "role": "user",
