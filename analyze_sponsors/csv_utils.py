@@ -8,9 +8,10 @@ from datetime import datetime
 
 
 def persist_open_positions(company_name, open_positions: typing.List[dict], override_last_res=False):
-    if not open_positions:
-        logging.info("[%s] empty list of open positions was provided", company_name)
-        return
+    # Will accept empty list for cache purposes
+    # if not open_positions:
+    #     logging.info("[%s] empty list of open positions was provided", company_name)
+    #     return
     logging.debug("[%s] persisting found jobs: %s", company_name, open_positions)
     
     fieldnames = ["title", "type", "location"]
