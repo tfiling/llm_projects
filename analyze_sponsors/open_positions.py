@@ -30,7 +30,10 @@ def _extract_open_positions(page_contents: str) -> list:
     if len(message.content) > 1:
         logging.warning("[%s] received more than one content block", logs.trace_id_var.get())
         print(str(message.content))
-    open_positions_dict = _extract_json_from_text_block(message.content[0].text)
+    claude_response = message.content[0].text
+    if message.stop_reason == "max_tokens":
+        claude_response = _amend_partial_json_resp(claude_response)
+    open_positions_dict = _extract_json_from_text_block(claude_response)
     return open_positions_dict.get("positions", [])
 
 
@@ -53,6 +56,16 @@ def _send_api_request(page_contents: str) -> anthropic.types.Message:
     )
     logging.debug("[%s] position extraction prompt was sent. usage: %s", logs.trace_id_var.get(), message.usage)
     return message
+
+
+def _amend_partial_json_resp(claude_response):
+    if "```json" in claude_response:
+        start = claude_response.index("```json")
+        claude_response = claude_response[start + len("```json"):]
+    end_idx = claude_response.rindex("},")
+    claude_response = claude_response[:end_idx + 1]  # include closing curley brackets
+    claude_response += "]}"
+    return claude_response
 
 
 async def _get_stripped_page_content(url: str):
