@@ -5,13 +5,14 @@ import pathlib
 import typing
 import re
 from urllib import parse
+import threading
 
 import bs4
 import requests
 from diskcache import Cache
 import oxylabs
 
-import logs
+from analyze_sponsors.logs import logs
 from analyze_sponsors import keywords
 
 cache = Cache(str(pathlib.Path(".") / "run_outputs" / "1" / "search_cache"))
@@ -49,7 +50,15 @@ def sync_concrete_google_search(name: str) -> typing.Optional[str]:
             logging.info("[%s] found careers page(%.2f%% similar): %s", logs.trace_id_var.get(),
                          similarity, website_url)
             return website_url
-        if _contains_relevant_keywords(website_url):
+        contains_keywords = False
+        try:
+            matched_words = run_with_timeout(_find_relevant_keywords, args=(website_url,), timeout_seconds=5)
+            logging.debug("[%s] careers page contents matched %d keywords: %s",
+                          logs.trace_id_var.get(), len(matched_words), matched_words)
+            contains_keywords = len(matched_words) > 0
+        except TimeoutError:
+            logging.info("[%s] could not fetch website in under 5 secs", logs.trace_id_var.get())
+        if contains_keywords:
             logging.info("[%s] found careers page %s based on relevant keywords",
                          logs.trace_id_var.get(), website_url)
             return website_url
@@ -78,7 +87,7 @@ def _query_for_website(name: str) -> typing.Optional[str]:
         raise e
 
 
-def _contains_relevant_keywords(website_url) -> bool:
+def _find_relevant_keywords(website_url) -> list:
     resp = requests.get(website_url)
     resp.raise_for_status()
     html_content = resp.text.lower()
@@ -97,7 +106,7 @@ def _contains_relevant_keywords(website_url) -> bool:
     matched_words = [word for word in keywords.RELEVANT_POSITIONS_KEYWORDS if word in contents]
     logging.debug("[%s] careers page contents matched %d keywords: %s",
                   logs.trace_id_var.get(), len(matched_words), matched_words)
-    return len(matched_words) > 0
+    return matched_words
 
 
 def _extract_first_result(response) -> typing.Optional[str]:
@@ -132,8 +141,12 @@ def _domain_company_similarity(url: str, company_name: str):
     company_name = _clean_string(company_name)
     logging.debug("[%s] extracted second level domain %s from %s",
                   logs.trace_id_var.get(), second_level_domain, url)
-    similarity = _get_similarity_ratio(second_level_domain, company_name)
-
+    try:
+        similarity = run_with_timeout(_get_similarity_ratio, args=(second_level_domain, company_name), timeout_seconds=5)
+    except TimeoutError:
+        logging.info("[%s] could not calculate in under 5 secs similarity to %s",
+                     logs.trace_id_var.get(), url)
+        return 0
     return similarity
 
 
@@ -144,3 +157,26 @@ def _get_similarity_ratio(a, b):
 def _clean_string(s: str):
     """Remove non-alphanumeric characters and convert to lowercase"""
     return re.sub(r'[^a-zA-Z0-9]', '', s).lower()
+
+
+def run_with_timeout(func, args=(), kwargs={}, timeout_seconds=5):
+    result = [None]
+    exception = [None]
+
+    def worker():
+        try:
+            result[0] = func(*args, **kwargs)
+        except Exception as e:
+            exception[0] = e
+
+    thread = threading.Thread(target=worker)
+    thread.start()
+    thread.join(timeout_seconds)
+
+    if thread.is_alive():
+        raise TimeoutError(f"Function execution timed out after {timeout_seconds} seconds")
+
+    if exception[0]:
+        raise exception[0]
+
+    return result[0]
