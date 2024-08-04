@@ -61,3 +61,10 @@ def escape_filename(filename: str):
     escaped = escaped.rstrip('. ')
 
     return escaped
+
+
+def get_company_name_from_csv_file_name(csv_filename: str) -> str:
+    csv_filename = csv_filename[:csv_filename.index(".csv")]
+    csv_filename =csv_filename.replace("_20", " ")
+    csv_filename = csv_filename.replace("_", " ")
+    return re.sub("\s+", " ", csv_filename)

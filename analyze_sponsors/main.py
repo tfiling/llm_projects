@@ -3,15 +3,16 @@ import logging
 import pathlib
 
 import careers_page
-import logs
-import csv_utils
-from analyze_sponsors import open_positions
+from analyze_sponsors.log_analysis import log_analysis
+from analyze_sponsors.logs import logs
+from analyze_sponsors.utils import csv_utils
+from analyze_sponsors import open_positions, blacklist
 
 OUTPUTS_DIR = pathlib.Path(".") / "run_outputs"
 EMPLOYERS_CSV = pathlib.Path(".") / "data" / "approved_employers.csv"
 LOGS_PATH = OUTPUTS_DIR / "logs"
 CURRENT_RUN_DIR = OUTPUTS_DIR / "1"
-temp_blacklist = [
+temp_blacklist = {
     "10BE5 LTD.",
     "29FORWARD Ltd",
     "Adam Ellis Ltd",
@@ -21,11 +22,13 @@ temp_blacklist = [
     "Advancy Limited",
     "Advantage Solicitors Ltd T/A Advantage Solicitors",
     "Aeguana Ltd",
-]
+    "5 Hertford Street",
+} | blacklist.PAST_FAILURES
 
 
 def _is_already_processed(company_name: str):
-    return csv_utils.calculate_results_file_path(company_name).exists()
+    return (csv_utils.calculate_results_file_path(company_name).exists() or
+            company_name in log_analysis.extract_from_logs_companies_with_no_keyword_matches())
 
 
 async def process_company(name: str):
@@ -54,6 +57,8 @@ async def process_batch(raw_employers):
     for company_name, err in res:
         if err:
             logging.error("[%s] analysis failed with error: %s", company_name, err)
+        else:
+            logging.info("[%s] successfully processed", company_name)
 
 
 async def main():
@@ -68,7 +73,6 @@ async def main():
         logging.debug("-----------------------------------------------------------------------------------------------")
         logging.debug("-----------------------------------------------------------------------------------------------")
     logs.flush_logger()
-
 
 if __name__ == '__main__':
     asyncio.run(main())

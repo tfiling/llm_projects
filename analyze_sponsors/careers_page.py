@@ -52,7 +52,7 @@ def sync_concrete_google_search(name: str) -> typing.Optional[str]:
             return website_url
         contains_keywords = False
         try:
-            matched_words = run_with_timeout(_find_relevant_keywords, args=(website_url,), timeout_seconds=5)
+            matched_words = run_with_timeout(_find_relevant_keywords, args=(website_url,name), timeout_seconds=5)
             logging.debug("[%s] careers page contents matched %d keywords: %s",
                           logs.trace_id_var.get(), len(matched_words), matched_words)
             contains_keywords = len(matched_words) > 0
@@ -87,7 +87,8 @@ def _query_for_website(name: str) -> typing.Optional[str]:
         raise e
 
 
-def _find_relevant_keywords(website_url) -> list:
+def _find_relevant_keywords(website_url, company_name) -> list:
+    logs.trace_id_var.set(company_name)
     resp = requests.get(website_url)
     resp.raise_for_status()
     html_content = resp.text.lower()
