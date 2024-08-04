@@ -16,15 +16,8 @@ PROMPT = """Given the following list of company names, please categorize each co
 14. Professional Services
 15. Other (for companies that don't fit the above categories)
 
-Return the results as a JSON array where each object has a single field named with the company name and it's value is the category. Here's an example of the desired format:
+Return the results as a single-line minified JSON array where each object has a single field named with the company name and it's value is the category. Here's an example of the desired format:
 
-[
-  {
-    "Ace Training Limited": "Education & Training",
-  },
-  {
-    "British Heart Foundation": "Healthcare & Medical"
-  }
-]
+[{"Ace Training Limited": "Education & Training"},{"British Heart Foundation": "Healthcare & Medical"}]
 
 Avoid any explanations"""
