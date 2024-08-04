@@ -10,6 +10,7 @@ import anthropic
 
 from analyze_sponsors.logs import logs
 from analyze_sponsors.prompts import analyze_open_positions_page
+from analyze_sponsors.utils import json_utils
 
 cache = Cache(str(pathlib.Path(".") / "run_outputs" / "1" / "claude_cache"))
 
@@ -32,8 +33,8 @@ def _extract_open_positions(page_contents: str) -> list:
         print(str(message.content))
     claude_response = message.content[0].text
     if message.stop_reason == "max_tokens":
-        claude_response = _amend_partial_json_resp(claude_response)
-    open_positions_dict = _extract_json_from_text_block(claude_response)
+        claude_response = json_utils.amend_partial_json_resp(claude_response)
+    open_positions_dict = json_utils.extract_json_from_prompt_text_block(claude_response)
     return open_positions_dict.get("positions", [])
 
 
@@ -58,19 +59,9 @@ def _send_api_request(page_contents: str) -> anthropic.types.Message:
     return message
 
 
-def _amend_partial_json_resp(claude_response):
-    if "```json" in claude_response:
-        start = claude_response.index("```json")
-        claude_response = claude_response[start + len("```json"):]
-    end_idx = claude_response.rindex("},")
-    claude_response = claude_response[:end_idx + 1]  # include closing curley brackets
-    claude_response += "]}"
-    return claude_response
-
-
 async def _get_stripped_page_content(url: str):
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, allow_redirects=False) as resp:
+        async with session.get(url, allow_redirects=False, timeout=10) as resp:
             html_content = await resp.text()
     soup = bs4.BeautifulSoup(html_content, 'html.parser')
     tags_to_remove = [
@@ -85,19 +76,3 @@ async def _get_stripped_page_content(url: str):
     text = soup.get_text()
     text = re.sub(r'\n\s*\n', '\n', text)
     return text
-
-
-def _extract_json_from_text_block(text_block: str) -> dict:
-    res = {}
-    if "```json" in text_block:
-        start = text_block.index("```json")
-        end = text_block.rindex("```")
-        if end <= start:
-            print("[%s] detected an invalid json annotation in text block")
-            return {}
-        text_block = text_block[start + len("```json"):end]
-    try:
-        res = json.loads(text_block)
-    except json.JSONDecodeError as e:
-        print(str(e))
-    return res

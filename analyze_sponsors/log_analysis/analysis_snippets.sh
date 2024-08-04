@@ -6,3 +6,6 @@
 
 #Get Kth line:
 #sed -n 3p # K = 3
+
+# cat the last run's log
+#cat "$(ls -t | head -n1)"
