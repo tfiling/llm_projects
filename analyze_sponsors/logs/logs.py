@@ -7,7 +7,7 @@ import sys
 trace_id_var = contextvars.ContextVar[str]('trace_id', default=None)
 
 
-def setup_logging(log_dir, log_level=logging.INFO):
+def setup_logging(log_dir, log_level=logging.INFO, log_file_prefix=""):
     """
     Set up logging to both stdout and a file using the root logger.
     The log file is created in the specified directory with the current date and time as its name.
@@ -15,7 +15,7 @@ def setup_logging(log_dir, log_level=logging.INFO):
 
     os.makedirs(log_dir, exist_ok=True)
     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-    log_file = os.path.join(log_dir, f"log_{current_time}.log")
+    log_file = os.path.join(log_dir, f"{log_file_prefix}log_{current_time}.log")
     logger = logging.getLogger()
     logger.setLevel(log_level)
     logger.handlers = []
