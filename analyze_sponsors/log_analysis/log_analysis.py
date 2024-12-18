@@ -7,14 +7,16 @@ import re
 import typing
 
 import anthropic
-from diskcache import Cache
 
+from analyze_sponsors.logs import logs
 from analyze_sponsors.prompts import categorize_by_company_name
 from analyze_sponsors.utils import json_utils
 from analyze_sponsors.utils import csv_utils
 
 SCRAPER_LOGS_PATH = pathlib.Path(".") / "run_outputs" / "logs"
 OUT_CSVS_DIR = pathlib.Path(".") / "run_outputs" / "1" / "positions"
+EMPLOYERS_CSV = pathlib.Path(".") / "data" / "approved_employers.csv"
+LOGS_DIR = pathlib.Path(".") / "log_analysis" / "logs"
 FAILED_COMPANIES_FILE = pathlib.Path(".") / "log_analysis" / "categorize_by_name.txt"
 CATEGORIZED_COMPANIES_FILE = pathlib.Path(".") / "log_analysis" / "categorize_by_name_results.json"
 
@@ -35,10 +37,12 @@ def extract_from_logs_companies_with_no_keyword_matches() -> set:
 
 
 async def categorize_companies_that_failed():
-    company_names = (_extract_from_logs_companies_that_failed() |
-                     _read_failed_companies_file() |
-                     _list_companies_without_extracted_positions())
-    logging.debug("detected %d companies", len(company_names))
+    # company_names = (_extract_from_logs_companies_that_failed() |
+    #                  _read_failed_companies_file() |
+    #                  _list_companies_without_extracted_positions())
+    # logging.debug("detected %d companies", len(company_names))
+    company_names = _list_all_companies()
+    logging.debug("listing all %d companies", len(company_names))
     categorized_companies = _read_cached_deducted_categories()
     logging.debug("%d companies already categorized", len(company_names))
     company_names = list(company_names - categorized_companies)
@@ -48,9 +52,7 @@ async def categorize_companies_that_failed():
     for i in range(0, len(company_names), names_per_prompt):
         prompts.append("\n".join(company_names[i:i + names_per_prompt]))
 
-    prompts = prompts[:1]
-
-    batch_size = 4
+    batch_size = 5
     batches = [prompts[i:i + batch_size] for i in range(0, len(prompts), batch_size)]
     for batch in batches:
         deductions = await _process_failed_companies_batch(batch)
@@ -123,6 +125,7 @@ async def _deduct_companies_categories(company_list_prompt: str) -> typing.List[
 async def _send_prompt(company_list_prompt: str) -> anthropic.types.Message:
     client = anthropic.AsyncClient(
         api_key="",
+        max_retries=5,
     )
     message = await client.messages.create(
         max_tokens=4096,
@@ -173,6 +176,10 @@ def _list_companies_without_extracted_positions() -> set:
     return company_names
 
 
+def _list_all_companies() -> set:
+    return {entry["Organisation Name"] for entry in csv_utils.read_csv_to_dict(EMPLOYERS_CSV)}
+
+
 def _read_cached_deducted_categories():
     if not CATEGORIZED_COMPANIES_FILE.exists():
         logging.info("categorize_by_name_results.json does not exist")
@@ -192,4 +199,5 @@ def _is_valid_deductions_list(deductions) -> bool:
 
 
 if __name__ == '__main__':
+    logs.setup_logging(LOGS_DIR, logging.DEBUG)
     asyncio.run(categorize_companies_that_failed())
